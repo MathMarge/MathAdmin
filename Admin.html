@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Master Admin Hub</title>
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* Lock Screen Style */
+        .lock-container {
+            background: #1e293b;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            text-align: center;
+            width: 100%;
+            max-width: 380px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .lock-container h2 {
+            margin-bottom: 10px;
+            color: #38bdf8;
+        }
+
+        .lock-container p {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            margin-bottom: 20px;
+        }
+
+        .lock-container input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: #fff;
+            font-size: 1rem;
+            text-align: center;
+            margin-bottom: 15px;
+            outline: none;
+        }
+
+        .lock-container button {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: none;
+            background: #38bdf8;
+            color: #0f172a;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .lock-container button:hover {
+            background: #0284c7;
+            color: #fff;
+        }
+
+        .error-msg {
+            color: #ef4444;
+            font-size: 0.85rem;
+            margin-top: 10px;
+            display: none;
+        }
+
+        /* Dashboard Style (Initially Hidden) */
+        .dashboard-container {
+            display: none;
+            width: 100%;
+            max-width: 500px;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .dashboard-header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .dashboard-header h1 {
+            color: #38bdf8;
+            font-size: 1.8rem;
+        }
+
+        .card {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .card-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .card-icon {
+            font-size: 1.8rem;
+            background: #334155;
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .admin-btn {
+            padding: 10px 18px;
+            background: #22c55e;
+            color: #ffffff;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .admin-btn:hover {
+            background: #16a34a;
+        }
+
+        /* SHARED MODAL OVERLAY STYLES */
+        .admin-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(8, 15, 20, 0.95);
+            z-index: 9999;
+            overflow-y: auto;
+        }
+
+        .admin-modal-content {
+            background-color: #080f14;
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+        }
+
+        /* MATH MERGE STYLES */
+        #math-login-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #0f1c24 0%, #080f14 100%);
+            display: flex; align-items: center; justify-content: center; z-index: 10000;
+        }
+        .math-login-card {
+            background: #0f1c24; padding: 30px; border-radius: 8px; border: 2px solid #b38f00;
+            box-shadow: 0 0 20px rgba(255, 204, 0, 0.2); width: 90%; max-width: 360px; text-align: center; position: relative;
+        }
+        .math-login-card h2 { color: #ffcc00; margin-top: 0; margin-bottom: 20px; }
+        .math-login-btn {
+            width: 100%; background: linear-gradient(to bottom, #ffdb4d, #b38f00); color: #000; padding: 10px;
+            border-radius: 4px; font-size: 16px; border: none; cursor: pointer; font-weight: bold; text-transform: uppercase; margin-top: 10px;
+        }
+
+        /* FORM COMMON STYLES */
+        .input-group { margin-bottom: 15px; text-align: left; }
+        .input-group label { display: block; color: #ffd700; font-size: 12px; margin-bottom: 5px; }
+        .input-group input { width: 100%; padding: 10px; background: #080f14; border: 1px solid #1a3344; border-radius: 6px; color: #fff; outline: none; }
+
+        /* DASHBOARDS INNER LAYOUT */
+        .portal-dashboard { display: none; max-width: 1200px; margin: 0 auto; padding: 20px 0; }
+        .navbar { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #007bff; padding-bottom: 15px; margin-bottom: 20px; }
+        .navbar h1 { margin: 0; color: #ffd700; font-size: 24px; }
+        .close-modal-btn { background: #e74c3c; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+
+        /* METRICS & CONTROLS */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-card { background: #0f1c24; border: 1px solid #1a3344; border-left: 4px solid #007bff; padding: 15px; border-radius: 6px; }
+        .stat-card h4 { margin: 0 0 5px 0; color: #aaa; font-size: 13px; }
+        .stat-card .value { font-size: 22px; font-weight: bold; color: #ffd700; }
+
+        /* QR CODE & CONFIG SECTION */
+        .admin-section-box { background: #0f1c24; border: 1px solid #1a3344; border-radius: 8px; padding: 20px; margin-bottom: 25px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; }
+        .admin-section-box h3 { color: #ffd700; margin-bottom: 10px; font-size: 16px; }
+        .qr-preview-container { display: flex; align-items: center; gap: 15px; }
+        .qr-thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid #ffd700; background: #fff; }
+
+        /* TABLES */
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+        .search-box { padding: 8px 12px; background: #0f1c24; border: 1px solid #1a3344; border-radius: 6px; color: #fff; width: 250px; }
+        .table-container { overflow-x: auto; background: #0f1c24; border: 1px solid #1a3344; border-radius: 6px; margin-bottom: 30px; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+        th { background: #060c10; color: #ffd700; padding: 12px; border-bottom: 2px solid #1a3344; white-space: nowrap; }
+        td { padding: 12px; border-bottom: 1px solid #1a3344; white-space: nowrap; }
+        tr:hover { background: #142632; }
+        .user-pic { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; vertical-align: middle; border: 1px solid #007bff; }
+        .badge-active { background: rgba(46, 204, 113, 0.2); color: #2ecc71; padding: 3px 8px; border-radius: 12px; font-size: 11px; }
+
+        .btn-coin { background: #f39c12; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold; }
+        .btn-delete { background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold; }
+        .btn-approve { background: #27ae60; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; }
+        .btn-reject { background: #c0392b; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; }
+
+        /* SCREENSHOT MODAL */
+        #screenshotModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 11000; justify-content: center; align-items: center; }
+        #screenshotModal img { max-width: 90%; max-height: 90%; border-radius: 8px; border: 2px solid #ffd700; }
+    </style>
+</head>
+<body>
+
+    <!-- Step 1: Master Password Screen -->
+    <div class="lock-container" id="lockScreen">
+        <h2>🔒 Admin Access</h2>
+        <p>Aage badhne ke liye Master Password daalein</p>
+        <input type="password" id="passInput" placeholder="Password yahan likhein">
+        <button onclick="checkPassword()">Unlock Dashboard</button>
+        <div class="error-msg" id="errorMsg">Galat password! Dobara koshish karein.</div>
+    </div>
+
+    <!-- Step 2: Main Admin Dashboard -->
+    <div class="dashboard-container" id="dashboard">
+        <div class="dashboard-header">
+            <h1>Master Admin Hub</h1>
+            <p style="color: #94a3b8; font-size: 0.9rem;">Apne game ke admin login par jayein</p>
+        </div>
+
+        <!-- Math Merge -->
+        <div class="card">
+            <div class="card-info">
+                <div class="card-icon">🧩</div>
+                <div class="card-title">Math Merge</div>
+            </div>
+            <button onclick="openMathMergeModal()" id="link3" class="admin-btn">Login Admin</button>
+        </div>
+    </div>
+
+    <!-- MATH MERGE MODAL PANEL -->
+    <div id="mathMergeModal" class="admin-modal-overlay">
+        <div class="admin-modal-content">
+            <!-- LOGIN SCREEN -->
+            <div id="math-login-overlay">
+                <div class="math-login-card">
+                    <button onclick="closeMathMergeModal()" style="position: absolute; top: 10px; right: 15px; background: none; border: none; color: #ffcc00; font-size: 18px; cursor: pointer;">✖</button>
+                    <h2>ADMIN PORTAL</h2>
+                    <div class="input-group">
+                        <label>Admin ID</label>
+                        <input type="text" id="admin-user" placeholder="Enter Admin Username">
+                    </div>
+                    <div class="input-group">
+                        <label>Password</label>
+                        <input type="password" id="admin-pass" placeholder="Enter Password">
+                    </div>
+                    <button class="math-login-btn" onclick="handleAdminLogin()">Login to Dashboard</button>
+                </div>
+            </div>
+
+            <!-- MAIN DASHBOARD -->
+            <div id="admin-dashboard" class="portal-dashboard">
+                <div class="navbar" style="border-bottom-color: #b38f00;">
+                    <h1 style="color:#ffcc00;">Math Merge Control Panel</h1>
+                    <button class="close-modal-btn" onclick="closeMathMergeModal()">Close Portal</button>
+                </div>
+
+                <!-- METRICS OVERVIEW -->
+                <div class="stats-grid">
+                    <div class="stat-card" style="border-left-color: #00e5ff;">
+                        <h4>TOTAL USERS</h4>
+                        <div class="value" id="stat-total-users" style="color:#ffcc00;">0</div>
+                    </div>
+                    <div class="stat-card" style="border-left-color: #00e5ff;">
+                        <h4>PENDING DEPOSIT REQUESTS</h4>
+                        <div class="value" id="stat-pending-deposits" style="color:#ffcc00;">0</div>
+                    </div>
+                    <div class="stat-card" style="border-left-color: #00e5ff;">
+                        <h4>PENDING WITHDRAWALS</h4>
+                        <div class="value" id="stat-pending-withdrawals" style="color:#ffcc00;">0</div>
+                    </div>
+                    <div class="stat-card" style="border-left-color: #00e5ff;">
+                        <h4>ACTIVE ROOMS</h4>
+                        <div class="value" id="stat-active-rooms" style="color:#ffcc00;">0</div>
+                    </div>
+                    <div class="stat-card" style="border-left-color: #00e5ff;">
+                        <h4>TOTAL CIRCULATING COINS</h4>
+                        <div class="value" id="stat-total-coins" style="color:#ffcc00;">0</div>
+                    </div>
+                </div>
+
+                <!-- QR CODE MANAGEMENT SECTION -->
+                <div class="admin-section-box">
+                    <div>
+                        <h3>Payment QR Code Management</h3>
+                        <p style="color: #aaa; font-size: 12px; margin-bottom: 10px;">Deposit ke liye app mein show hone wala QR code update karein.</p>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="text" id="qr-url-input" class="search-box" placeholder="Enter new QR Image URL..." style="width: 280px;">
+                            <button class="admin-btn" style="padding: 8px 15px; font-size: 12px;" onclick="updateQRCode()">Update QR</button>
+                        </div>
+                    </div>
+                    <div class="qr-preview-container">
+                        <img id="current-qr-preview" class="qr-thumb" src="https://via.placeholder.com/80" alt="QR Code">
+                        <span style="font-size: 12px; color: #ffd700;">Current QR Code</span>
+                    </div>
+                </div>
+
+                <!-- PENDING DEPOSIT APPROVALS SECTION -->
+                <div class="section-header">
+                    <h3 style="color:#ffcc00; margin:0;">Pending Deposit Approvals</h3>
+                </div>
+                <div class="table-container" style="margin-bottom: 25px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>User Mobile</th>
+                                <th>Amount / Coins</th>
+                                <th>TxID</th>
+                                <th>Screenshot</th>
+                                <th>Requested Date/Time</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="deposit-table-body">
+                            <tr>
+                                <td colspan="7" style="text-align:center;">Loading Pending Deposits...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- PENDING WITHDRAWAL REQUESTS SECTION -->
+                <div class="section-header">
+                    <h3 style="color:#ffcc00; margin:0;">Pending Withdrawal Requests</h3>
+                </div>
+                <div class="table-container" style="margin-bottom: 25px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>User ID / Mobile</th>
+                                <th>Coins (Min 200)</th>
+                                <th>Payment Method</th>
+                                <th>UPI ID / Number</th>
+                                <th>Requested Date/Time</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="withdrawal-table-body">
+                            <tr>
+                                <td colspan="8" style="text-align:center;">Loading Pending Withdrawals...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- USER LIST SECTION -->
+                <div class="section-header">
+                    <h3 style="color:#ffcc00; margin:0;">User Records (Sequential List)</h3>
+                    <input type="text" id="search-input" class="search-box" placeholder="Search by Name/Mobile..." onkeyup="filterUsers()">
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>User</th>
+                                <th>Mobile (ID)</th>
+                                <th>Password</th>
+                                <th>Coins</th>
+                                <th>High Score</th>
+                                <th>Registered Date/Time</th>
+                                <th>Last Login Date/Time</th>
+                                <th>Manage Coins</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-table-body">
+                            <tr>
+                                <td colspan="10" style="text-align:center;">Loading User Directory...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREENSHOT VIEW MODAL -->
+    <div id="screenshotModal" onclick="closeScreenshotModal()">
+        <img id="modal-screenshot-img" src="" alt="Deposit Screenshot">
+    </div>
+
+    <script>
+        // 1. MASTER DASHBOARD LOGIC
+        const MASTER_PASSWORD = "admin123";
+
+        function checkPassword() {
+            const input = document.getElementById("passInput").value;
+            const errorMsg = document.getElementById("errorMsg");
+            const lockScreen = document.getElementById("lockScreen");
+            const dashboard = document.getElementById("dashboard");
+
+            if (input === MASTER_PASSWORD) {
+                lockScreen.style.display = "none";
+                dashboard.style.display = "flex";
+            } else {
+                errorMsg.style.display = "block";
+            }
+        }
+
+        // 2. FIREBASE APPS INITIALIZATION (Updated Config)
+        const mathFirebaseConfig = {
+            apiKey: "AIzaSyA5LxqMPqhnCQ4pD71AfNzulLSVacf1G7g",
+            authDomain: "mathmarge.firebaseapp.com",
+            projectId: "mathmarge",
+            storageBucket: "mathmarge.firebasestorage.app",
+            messagingSenderId: "313180377672",
+            appId: "1:313180377672:web:930c0b0ec175033153fe7d",
+            measurementId: "G-VN9F03PJ1T",
+            databaseURL: "https://mathmarge-default-rtdb.firebaseio.com/"
+        };
+
+        const mathApp = firebase.initializeApp(mathFirebaseConfig, "mathMergeApp");
+        const mathDB = firebase.database(mathApp);
+
+        // 3. MATH MERGE INTEGRATED LOGIC
+        let allUsersData = [];
+        let pendingDepositsData = [];
+        let pendingWithdrawalsData = [];
+
+        function openMathMergeModal() {
+            document.getElementById('mathMergeModal').style.display = 'block';
+            if (sessionStorage.getItem('adminSession') === 'active') {
+                document.getElementById('math-login-overlay').style.display = 'none';
+                document.getElementById('admin-dashboard').style.display = 'block';
+                loadDashboardData();
+            } else {
+                document.getElementById('math-login-overlay').style.display = 'flex';
+                document.getElementById('admin-dashboard').style.display = 'none';
+            }
+        }
+
+        function closeMathMergeModal() {
+            document.getElementById('mathMergeModal').style.display = 'none';
+        }
+
+        function handleAdminLogin() {
+            const user = document.getElementById('admin-user').value.trim();
+            const pass = document.getElementById('admin-pass').value.trim();
+
+            if (user === "Admin" && pass === "Admin123") {
+                sessionStorage.setItem('adminSession', 'active');
+                document.getElementById('math-login-overlay').style.display = 'none';
+                document.getElementById('admin-dashboard').style.display = 'block';
+                loadDashboardData();
+            } else {
+                alert("Invalid Admin Credentials!");
+            }
+        }
+
+        function loadDashboardData() {
+            // Load Users Data
+            mathDB.ref('users').on('value', (snapshot) => {
+                const data = snapshot.val();
+                allUsersData = [];
+                let totalCoins = 0;
+
+                if (data) {
+                    Object.keys(data).forEach(key => {
+                        const u = data[key];
+                        u.mobileKey = key;
+                        totalCoins += (parseInt(u.coins) || 0);
+                        allUsersData.push(u);
+                    });
+
+                    allUsersData.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                    allUsersData.forEach((u, index) => { u.sequenceNumber = index + 1; });
+                }
+
+                document.getElementById('stat-total-users').innerText = allUsersData.length;
+                document.getElementById('stat-total-coins').innerText = totalCoins;
+                renderUserTable(allUsersData);
+            });
+
+            // Load Rooms Data for Active Rooms metric
+            mathDB.ref('rooms').on('value', (snapshot) => {
+                const rooms = snapshot.val();
+                let activeRooms = 0;
+
+                if (rooms) {
+                    Object.values(rooms).forEach(r => {
+                        if (r.status === 'active') activeRooms++;
+                    });
+                }
+
+                document.getElementById('stat-active-rooms').innerText = activeRooms;
+            });
+
+            // Load Pending Deposits Data
+            mathDB.ref('deposits').on('value', (snapshot) => {
+                const data = snapshot.val();
+                pendingDepositsData = [];
+
+                if (data) {
+                    Object.keys(data).forEach(key => {
+                        const d = data[key];
+                        d.depositKey = key;
+                        if (d.status === 'pending') {
+                            pendingDepositsData.push(d);
+                        }
+                    });
+                    pendingDepositsData.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                }
+
+                document.getElementById('stat-pending-deposits').innerText = pendingDepositsData.length;
+                renderDepositTable(pendingDepositsData);
+            });
+
+            // Load Pending Withdrawals Data
+            mathDB.ref('withdrawals').on('value', (snapshot) => {
+                const data = snapshot.val();
+                pendingWithdrawalsData = [];
+
+                if (data) {
+                    Object.keys(data).forEach(key => {
+                        const w = data[key];
+                        w.withdrawalKey = key;
+                        if (w.status === 'pending') {
+                            pendingWithdrawalsData.push(w);
+                        }
+                    });
+                    pendingWithdrawalsData.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                }
+
+                document.getElementById('stat-pending-withdrawals').innerText = pendingWithdrawalsData.length;
+                renderWithdrawalTable(pendingWithdrawalsData);
+            });
+
+            // Load QR Code settings
+            mathDB.ref('settings/qrCodeUrl').on('value', (snapshot) => {
+                const qrUrl = snapshot.val();
+                if (qrUrl) {
+                    document.getElementById('current-qr-preview').src = qrUrl;
+                    document.getElementById('qr-url-input').value = qrUrl;
+                }
+            });
+        }
+
+        function updateQRCode() {
+            const newUrl = document.getElementById('qr-url-input').value.trim();
+            if (!newUrl) {
+                alert("Please enter a valid QR image URL!");
+                return;
+            }
+            mathDB.ref('settings/qrCodeUrl').set(newUrl).then(() => {
+                alert("QR Code updated successfully!");
+            }).catch((err) => {
+                alert("Failed to update QR Code: " + err.message);
+            });
+        }
+
+        function renderDepositTable(depositsList) {
+            const tbody = document.getElementById('deposit-table-body');
+            tbody.innerHTML = '';
+
+            if (depositsList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No pending deposit requests.</td></tr>';
+                return;
+            }
+
+            depositsList.forEach((d, idx) => {
+                const tr = document.createElement('tr');
+                const reqTime = d.timestamp ? new Date(d.timestamp).toLocaleString() : 'N/A';
+                const screenshotSrc = d.screenshot || 'https://via.placeholder.com/40';
+
+                tr.innerHTML = `
+                    <td>${idx + 1}</td>
+                    <td style="color:#00e5ff;">${d.mobile || 'N/A'}</td>
+                    <td style="color:#ffcc00; font-weight:bold;">${d.amount || 0} Coins</td>
+                    <td>${d.txid || 'N/A'}</td>
+                    <td>
+                        <img src="${screenshotSrc}" class="user-pic" style="cursor:pointer;" alt="proof" onclick="showScreenshot('${screenshotSrc}')">
+                    </td>
+                    <td>${reqTime}</td>
+                    <td>
+                        <div style="display:flex; gap:5px;">
+                            <button class="btn-approve" onclick="approveDeposit('${d.depositKey}', '${d.mobile}', ${d.amount || 0})">Approve</button>
+                            <button class="btn-reject" onclick="rejectDeposit('${d.depositKey}')">Reject</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderWithdrawalTable(withdrawalsList) {
+            const tbody = document.getElementById('withdrawal-table-body');
+            tbody.innerHTML = '';
+
+            if (withdrawalsList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">No pending withdrawal requests.</td></tr>';
+                return;
+            }
+
+            withdrawalsList.forEach((w, idx) => {
+                const tr = document.createElement('tr');
+                const reqTime = w.timestamp ? new Date(w.timestamp).toLocaleString() : 'N/A';
+
+                tr.innerHTML = `
+                    <td>${idx + 1}</td>
+                    <td style="color:#00e5ff;">${w.mobile || w.userId || 'N/A'}</td>
+                    <td style="color:#ffcc00; font-weight:bold;">${w.amount || 0} Coins</td>
+                    <td style="text-transform:uppercase;">${w.method || 'UPI'}</td>
+                    <td style="color:#38bdf8; font-family:monospace;">${w.upiId || w.number || 'N/A'}</td>
+                    <td>${reqTime}</td>
+                    <td><span style="background: rgba(243, 156, 18, 0.2); color: #f39c12; padding: 3px 8px; border-radius: 12px; font-size: 11px;">Pending</span></td>
+                    <td>
+                        <div style="display:flex; gap:5px;">
+                            <button class="btn-approve" onclick="approveWithdrawal('${w.withdrawalKey}')">Mark as Success</button>
+                            <button class="btn-reject" onclick="rejectWithdrawal('${w.withdrawalKey}')">Reject</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function approveWithdrawal(withdrawalKey) {
+            if (confirm("Are you sure you want to mark this withdrawal request as Successfully Approved?")) {
+                mathDB.ref('withdrawals/' + withdrawalKey + '/status').set('Successfully Approved').then(() => {
+                    alert("Withdrawal request approved successfully!");
+                }).catch((err) => {
+                    alert("Error updating status: " + err.message);
+                });
+            }
+        }
+
+        function rejectWithdrawal(withdrawalKey) {
+            if (confirm("Are you sure you want to reject this withdrawal request?")) {
+                mathDB.ref('withdrawals/' + withdrawalKey + '/status').set('Rejected').then(() => {
+                    alert("Withdrawal request rejected.");
+                });
+            }
+        }
+
+        function showScreenshot(url) {
+            document.getElementById('modal-screenshot-img').src = url;
+            document.getElementById('screenshotModal').style.display = 'flex';
+        }
+
+        function closeScreenshotModal() {
+            document.getElementById('screenshotModal').style.display = 'none';
+        }
+
+        function approveDeposit(depositKey, mobile, amount) {
+            if (confirm(`Approve deposit of ${amount} coins for user ${mobile}?`)) {
+                mathDB.ref('users/' + mobile + '/coins').transaction((currentCoins) => {
+                    return (currentCoins || 0) + amount;
+                }).then(() => {
+                    return mathDB.ref('deposits/' + depositKey + '/status').set('approved');
+                }).then(() => {
+                    alert("Deposit approved and coins added successfully!");
+                }).catch((err) => {
+                    alert("Error processing approval: " + err.message);
+                });
+            }
+        }
+
+        function rejectDeposit(depositKey) {
+            if (confirm("Are you sure you want to reject this deposit request?")) {
+                mathDB.ref('deposits/' + depositKey + '/status').set('rejected').then(() => {
+                    alert("Deposit request rejected.");
+                });
+            }
+        }
+
+        function renderUserTable(usersList) {
+            const tbody = document.getElementById('user-table-body');
+            tbody.innerHTML = '';
+
+            if (usersList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;">No users found.</td></tr>';
+                return;
+            }
+
+            usersList.forEach(u => {
+                const tr = document.createElement('tr');
+                const createdAt = u.createdAt ? new Date(u.createdAt).toLocaleString() : 'N/A';
+                const effectiveLastLogin = u.lastLogin || u.createdAt;
+                const lastLogin = effectiveLastLogin ? new Date(effectiveLastLogin).toLocaleString() : 'N/A';
+                const profileImg = u.profilePic || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+                const userPassword = u.password || u.pass || 'N/A';
+
+                tr.innerHTML = `
+                    <td>${u.sequenceNumber}</td>
+                    <td>
+                        <img src="${profileImg}" class="user-pic" alt="avatar"> 
+                        <strong style="margin-left: 5px;">${u.name || 'N/A'}</strong>
+                    </td>
+                    <td style="color:#00e5ff;">${u.mobileKey}</td>
+                    <td style="color:#ff7675; font-family:monospace;">${userPassword}</td>
+                    <td style="color:#ffcc00; font-weight:bold;">${u.coins || 0}</td>
+                    <td>${u.lastScore || 0}</td>
+                    <td>${createdAt}</td>
+                    <td><span class="badge-active">${lastLogin}</span></td>
+                    <td>
+                        <div style="display:flex; gap:5px;">
+                            <button class="btn-coin" onclick="modifyCoins('${u.mobileKey}', 'add')">+ Add</button>
+                            <button class="btn-coin" style="background:#d35400;" onclick="modifyCoins('${u.mobileKey}', 'deduct')">- Deduct</button>
+                        </div>
+                    </td>
+                    <td>
+                        <button class="btn-delete" onclick="deleteUser('${u.mobileKey}', '${u.name}')">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterUsers() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const filtered = allUsersData.filter(u => 
+                (u.name && u.name.toLowerCase().includes(query)) || 
+                (u.mobileKey && u.mobileKey.includes(query))
+            );
+            renderUserTable(filtered);
+        }
+
+        function modifyCoins(mobile, action) {
+            const amountInput = prompt(`Enter amount of coins to ${action}:`);
+            const amount = parseInt(amountInput);
+
+            if (isNaN(amount) || amount <= 0) {
+                alert("Please enter a valid amount!");
+                return;
+            }
+
+            mathDB.ref('users/' + mobile + '/coins').transaction((currentCoins) => {
+                currentCoins = currentCoins || 0;
+                return action === 'add' ? currentCoins + amount : Math.max(0, currentCoins - amount);
+            }).then(() => {
+                alert(`Successfully updated coins for User: ${mobile}`);
+            });
+        }
+
+        function deleteUser(mobile, name) {
+            if (confirm(`Are you sure you want to permanently delete user "${name}" (${mobile})?`)) {
+                mathDB.ref('users/' + mobile).remove().then(() => {
+                    alert("User deleted successfully.");
+                });
+            }
+        }
+    </script>
+</body>
+</html>
